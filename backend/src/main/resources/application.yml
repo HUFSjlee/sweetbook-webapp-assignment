@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+sweetbook:
+  api:
+    base-url: ${SWEETBOOK_API_BASE_URL}
+    key: ${SWEETBOOK_API_KEY}
+
+supabase:
+  url: ${SUPABASE_URL}
+  key: ${SUPABASE_SERVICE_KEY}
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
