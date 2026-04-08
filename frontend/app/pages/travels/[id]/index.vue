@@ -3,6 +3,7 @@ import type { Photo } from '~/app/types/api'
 
 const route = useRoute()
 const api = useApi()
+const { formatStatus } = useDisplay()
 const travelId = computed(() => route.params.id as string)
 
 const { data: travel } = await useAsyncData(
@@ -112,7 +113,7 @@ async function movePhoto(photoId: string, direction: -1 | 1) {
     <div style="display: grid; gap: 24px;">
       <section class="glass-panel">
         <div class="meta-row">
-          <span class="status-badge">{{ travel.status }}</span>
+          <span class="status-badge">{{ formatStatus(travel.status) }}</span>
           <span>{{ travel.startDate || 'No start date' }} ~ {{ travel.endDate || 'No end date' }}</span>
         </div>
         <h1 class="section-title" style="margin-top: 16px;">{{ travel.title }}</h1>

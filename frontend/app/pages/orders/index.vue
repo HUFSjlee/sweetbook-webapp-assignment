@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const api = useApi()
 const { data: orders, refresh, error } = await useAsyncData('orders', () => api.getOrders())
+const { formatStatus } = useDisplay()
 </script>
 
 <template>
@@ -23,7 +24,7 @@ const { data: orders, refresh, error } = await useAsyncData('orders', () => api.
     <div v-else-if="orders?.length" class="content-grid">
       <article v-for="order in orders" :key="order.id" class="card">
         <div class="meta-row">
-          <span class="status-badge">{{ order.status }}</span>
+          <span class="status-badge">{{ formatStatus(order.status) }}</span>
           <span>{{ order.createdAt.slice(0, 10) }}</span>
         </div>
         <h3 style="margin: 14px 0 8px;">{{ order.orderUid }}</h3>

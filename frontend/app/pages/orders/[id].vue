@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const api = useApi()
+const { formatStatus } = useDisplay()
 
 const orderId = computed(() => route.params.id as string)
 const { data, refresh } = await useAsyncData(
@@ -47,7 +48,7 @@ async function cancelOrder() {
 
       <div class="stat-grid">
         <div class="stat">
-          <strong>{{ data.order.status }}</strong>
+          <strong>{{ formatStatus(data.order.status) }}</strong>
           <span class="muted">Current status</span>
         </div>
         <div class="stat">

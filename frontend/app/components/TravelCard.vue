@@ -1,37 +1,39 @@
 <script setup lang="ts">
 import type { Travel } from '~/app/types/api'
 
-defineProps<{
+const props = defineProps<{
   travel: Travel
 }>()
+
+const { formatStatus } = useDisplay()
 </script>
 
 <template>
-  <article class="card">
+  <article class="card home-project-card">
     <div class="meta-row">
-      <span class="status-badge">{{ travel.status }}</span>
-      <span>{{ travel.startDate || 'Date TBD' }}</span>
+      <span class="status-badge">{{ formatStatus(props.travel.status) }}</span>
+      <span>{{ props.travel.startDate || '날짜 미정' }}</span>
     </div>
 
-    <h3 style="margin: 14px 0 10px; font-size: 1.35rem;">
-      {{ travel.title }}
+    <h3 class="home-project-card__title">
+      {{ props.travel.title }}
     </h3>
 
     <p class="muted">
-      {{ travel.description || '사진, 메모, 주문 흐름까지 이어지는 여행 포토북 프로젝트입니다.' }}
+      {{ props.travel.description || '사진과 메모를 모아 포토북으로 정리하는 여행 프로젝트입니다.' }}
     </p>
 
     <div class="chip-row" style="margin-top: 16px;">
-      <span class="chip">{{ travel.mood || 'Open mood' }}</span>
-      <span class="chip">{{ travel.bookUid ? 'Book linked' : 'Draft only' }}</span>
+      <span class="chip">{{ props.travel.mood || '기록중' }}</span>
+      <span class="chip">{{ props.travel.bookUid ? '책 생성 완료' : '초안 상태' }}</span>
     </div>
 
     <div class="actions">
-      <NuxtLink class="button" :to="`/travels/${travel.id}`">
-        Open project
+      <NuxtLink class="button" :to="`/travels/${props.travel.id}`">
+        프로젝트 열기
       </NuxtLink>
-      <NuxtLink class="ghost-button" :to="`/travels/${travel.id}/preview`">
-        Preview book
+      <NuxtLink class="ghost-button" :to="`/travels/${props.travel.id}/preview`">
+        프리뷰 보기
       </NuxtLink>
     </div>
   </article>

@@ -2,17 +2,16 @@
   <div class="app-shell">
     <header class="site-header">
       <NuxtLink to="/" class="brand-mark">
-        <span class="brand-mark__badge">SB</span>
         <span>
           <strong>TravelogBook</strong>
-          <small>Printed travel stories, designed in motion.</small>
+          <small>당신의 여행을 한 권에 담아보세요</small>
         </span>
       </NuxtLink>
 
       <nav class="main-nav">
-        <NuxtLink to="/travels">Travels</NuxtLink>
-        <NuxtLink to="/travels/new">New Project</NuxtLink>
-        <NuxtLink to="/orders">Orders</NuxtLink>
+        <NuxtLink to="/travels">여행 목록</NuxtLink>
+        <NuxtLink to="/travels/new">새 프로젝트</NuxtLink>
+        <NuxtLink to="/orders">주문 내역</NuxtLink>
       </nav>
     </header>
 
