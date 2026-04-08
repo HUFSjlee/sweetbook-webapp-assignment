@@ -12,6 +12,8 @@ supabase:
   storage-bucket: ${SUPABASE_STORAGE_BUCKET:travel-assets}
 
 spring:
+  config:
+    import: optional:file:./.env[.properties]
   datasource:
     url: ${SUPABASE_DB_URL:jdbc:h2:file:./build/travelogbook;MODE=PostgreSQL;AUTO_SERVER=TRUE}
     username: ${SUPABASE_DB_USERNAME:sa}

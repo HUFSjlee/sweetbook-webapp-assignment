@@ -1,6 +1,8 @@
 package com.sweetbook.backend.order.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sweetbook.backend.common.exception.BadRequestException;
 import com.sweetbook.backend.common.exception.NotFoundException;
 import com.sweetbook.backend.integration.sweetbook.SweetBookClient;
@@ -30,6 +32,7 @@ public class OrderService {
     private final TravelOrderRepository orderRepository;
     private final TravelService travelService;
     private final SweetBookClient sweetBookClient;
+    private final ObjectMapper objectMapper;
 
     public OrderEstimateResponse estimate(UUID travelId, OrderEstimateRequest request) {
         Travel travel = travelService.getEntity(travelId);
@@ -48,7 +51,7 @@ public class OrderService {
         return new OrderEstimateResponse(
                 travelId.toString(),
                 extractInteger(response, "estimatedPrice", "price", "totalPrice"),
-                response
+                toPlainObject(response)
         );
     }
 
@@ -80,7 +83,8 @@ public class OrderService {
         order.setTravel(travel);
         order.setOrderUid(extractString(response, "orderUid", "uid", "id"));
         order.setRecipientName(request.recipientName());
-        order.setAddress(request.address1() + (request.address2() == null || request.address2().isBlank() ? "" : " " + request.address2()));
+        order.setAddress(request.address1()
+                + (request.address2() == null || request.address2().isBlank() ? "" : " " + request.address2()));
         order.setPhone(request.recipientPhone());
         order.setEstimatedPrice(request.estimatedPrice());
         order.setStatus(OrderStatus.CREATED);
@@ -101,7 +105,7 @@ public class OrderService {
         JsonNode response = unwrapData(sweetBookClient.getOrder(order.getOrderUid()));
         return Map.of(
                 "order", OrderResponse.from(order),
-                "sweetBookOrder", response
+                "sweetBookOrder", toPlainObject(response)
         );
     }
 
@@ -120,7 +124,7 @@ public class OrderService {
 
     private void ensureBookReady(Travel travel) {
         if (travel.getBookUid() == null || travel.getBookUid().isBlank()) {
-            throw new BadRequestException("주문 전 포토북 생성이 먼저 필요합니다.");
+            throw new BadRequestException("주문 전에 포토북 생성이 먼저 필요합니다.");
         }
     }
 
@@ -131,10 +135,12 @@ public class OrderService {
                 return value.asInt();
             }
         }
+
         JsonNode totalAmount = node.get("totalAmount");
         if (totalAmount != null && totalAmount.isNumber()) {
             return totalAmount.asInt();
         }
+
         return 0;
     }
 
@@ -145,10 +151,16 @@ public class OrderService {
                 return value.asText();
             }
         }
-        throw new BadRequestException("SweetBook 주문 응답에서 식별자를 찾지 못했습니다.");
+
+        throw new BadRequestException("SweetBook 주문 응답에서 주문 식별자를 찾지 못했습니다.");
     }
 
     private JsonNode unwrapData(JsonNode node) {
         return node.path("data");
+    }
+
+    private Object toPlainObject(JsonNode node) {
+        return objectMapper.convertValue(node, new TypeReference<Object>() {
+        });
     }
 }

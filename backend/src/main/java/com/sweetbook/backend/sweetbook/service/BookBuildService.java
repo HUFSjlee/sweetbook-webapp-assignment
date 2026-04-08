@@ -78,12 +78,12 @@ public class BookBuildService {
                 ? DEFAULT_BLANK_TEMPLATE_UID
                 : request.blankTemplateUid();
 
-        if (contentPages.size() < targetPages) {
-            JsonNode blankTemplate = unwrapData(sweetBookClient.getTemplateDetail(blankTemplateUid));
-            Map<String, Object> blankParameters = buildBlankParameters(travel, blankTemplate);
-            for (int i = contentPages.size(); i < targetPages; i++) {
-                sweetBookClient.addContents(bookUid, blankTemplateUid, blankParameters, "page");
-            }
+        JsonNode blankTemplate = unwrapData(sweetBookClient.getTemplateDetail(blankTemplateUid));
+        Map<String, Object> blankParameters = buildBlankParameters(travel, blankTemplate);
+        int currentPageCount = fetchCurrentPageCount(bookUid);
+        while (currentPageCount < targetPages) {
+            sweetBookClient.addContents(bookUid, blankTemplateUid, blankParameters, "page");
+            currentPageCount = fetchCurrentPageCount(bookUid);
         }
 
         JsonNode finalizedData = unwrapData(sweetBookClient.finalizeBook(bookUid));
@@ -97,12 +97,12 @@ public class BookBuildService {
         );
     }
 
-    public JsonNode getBookSpecs() {
-        return unwrapData(sweetBookClient.getBookSpecs());
+    public String getBookSpecsJson() {
+        return unwrapData(sweetBookClient.getBookSpecs()).toString();
     }
 
-    public JsonNode getTemplates(String bookSpecUid) {
-        return unwrapData(sweetBookClient.getTemplates(bookSpecUid));
+    public String getTemplatesJson(String bookSpecUid) {
+        return unwrapData(sweetBookClient.getTemplates(bookSpecUid)).toString();
     }
 
     private List<UploadedPhotoRef> uploadPhotos(String bookUid, List<Photo> photos) {
@@ -321,6 +321,15 @@ public class BookBuildService {
             }
         }
         return 24;
+    }
+
+    private int fetchCurrentPageCount(String bookUid) {
+        JsonNode booksData = unwrapData(sweetBookClient.getBook(bookUid));
+        JsonNode books = booksData.path("books");
+        if (books.isArray() && !books.isEmpty()) {
+            return books.get(0).path("pageCount").asInt(0);
+        }
+        return 0;
     }
 
     private boolean hasArrayFileBinding(JsonNode definitions) {

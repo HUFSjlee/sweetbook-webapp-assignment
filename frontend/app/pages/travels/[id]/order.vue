@@ -2,6 +2,7 @@
 const route = useRoute()
 const router = useRouter()
 const api = useApi()
+
 const travelId = computed(() => route.params.id as string)
 
 const { data: travel } = await useAsyncData(
@@ -16,21 +17,22 @@ const resultMessage = ref('')
 const errorMessage = ref('')
 
 const form = reactive({
-  recipientName: '',
-  recipientPhone: '',
-  postalCode: '',
-  address1: '',
-  address2: '',
-  memo: ''
+  recipientName: 'Test User',
+  recipientPhone: '01012345678',
+  postalCode: '06236',
+  address1: 'Seoul Test-ro 1',
+  address2: '101-ho',
+  memo: 'leave at door'
 })
 
 async function loadEstimate() {
   try {
     estimating.value = true
+    errorMessage.value = ''
     const result = await api.estimateOrder(travelId.value)
     estimate.value = result.estimatedPrice
   } catch (error) {
-    errorMessage.value = '견적 조회에 실패했습니다. 먼저 포토북을 생성했는지 확인해 주세요.'
+    errorMessage.value = 'Estimate lookup failed. Build the SweetBook project first.'
     console.error(error)
   } finally {
     estimating.value = false
@@ -54,10 +56,10 @@ async function submitOrder() {
       estimatedPrice: estimate.value
     })
 
-    resultMessage.value = `주문 ${order.orderUid} 이 생성되었습니다.`
+    resultMessage.value = `Order ${order.orderUid} was created.`
     await router.push(`/orders/${order.id}`)
   } catch (error) {
-    errorMessage.value = '주문 생성에 실패했습니다.'
+    errorMessage.value = 'Order creation failed.'
     console.error(error)
   } finally {
     ordering.value = false
@@ -69,25 +71,25 @@ async function submitOrder() {
   <div v-if="travel" class="two-column">
     <section class="glass-panel">
       <span class="eyebrow">Order Checkout</span>
-      <h1 class="section-title">{{ travel.title }} 주문하기</h1>
+      <h1 class="section-title">{{ travel.title }} checkout</h1>
       <p class="muted">
-        SweetBook에서 계산한 견적을 확인한 뒤 배송 정보를 입력하면 주문이 생성됩니다.
+        The estimate comes from SweetBook and the order is created through the backend.
       </p>
 
       <div class="stat-grid">
         <div class="stat">
           <strong>{{ estimate == null ? '...' : `${estimate.toLocaleString()} KRW` }}</strong>
-          <span class="muted">현재 견적</span>
+          <span class="muted">Current estimate</span>
         </div>
         <div class="stat">
           <strong>{{ travel.bookUid || 'N/A' }}</strong>
-          <span class="muted">연결된 책 UID</span>
+          <span class="muted">Connected book UID</span>
         </div>
       </div>
 
       <div class="actions">
         <button class="ghost-button" :disabled="estimating" @click="loadEstimate">
-          {{ estimating ? 'Refreshing...' : '견적 다시 계산' }}
+          {{ estimating ? 'Refreshing...' : 'Refresh estimate' }}
         </button>
       </div>
     </section>
@@ -102,35 +104,35 @@ async function submitOrder() {
 
       <form class="form-grid" @submit.prevent="submitOrder">
         <div class="field">
-          <label>수령인</label>
+          <label>Recipient</label>
           <input v-model="form.recipientName" required>
         </div>
         <div class="field">
-          <label>연락처</label>
+          <label>Phone</label>
           <input v-model="form.recipientPhone" required>
         </div>
         <div class="field">
-          <label>우편번호</label>
+          <label>Postal code</label>
           <input v-model="form.postalCode" required>
         </div>
         <div class="field">
-          <label>기본 주소</label>
+          <label>Address line 1</label>
           <input v-model="form.address1" required>
         </div>
         <div class="field">
-          <label>상세 주소</label>
+          <label>Address line 2</label>
           <input v-model="form.address2">
         </div>
         <div class="field">
-          <label>배송 메모</label>
+          <label>Delivery memo</label>
           <textarea v-model="form.memo" />
         </div>
 
         <div class="actions">
           <button class="button" type="submit" :disabled="ordering || estimate == null">
-            {{ ordering ? 'Ordering...' : '주문 생성' }}
+            {{ ordering ? 'Ordering...' : 'Create order' }}
           </button>
-          <NuxtLink class="ghost-button" :to="`/travels/${travel.id}/preview`">프리뷰로 돌아가기</NuxtLink>
+          <NuxtLink class="ghost-button" :to="`/travels/${travel.id}/preview`">Back to preview</NuxtLink>
         </div>
       </form>
     </section>

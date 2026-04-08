@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { Photo, Travel } from '~/app/types/api'
+import type { Photo } from '~/app/types/api'
 
 const route = useRoute()
 const api = useApi()
 const travelId = computed(() => route.params.id as string)
 
-const { data: travel, refresh: refreshTravel } = await useAsyncData(
+const { data: travel } = await useAsyncData(
   () => `travel-${travelId.value}`,
   () => api.getTravel(travelId.value)
 )
@@ -32,7 +32,7 @@ function onFileChange(event: Event) {
 
 async function upload() {
   if (!selectedFile.value) {
-    uploadError.value = '업로드할 이미지를 선택해 주세요.'
+    uploadError.value = '업로드할 이미지를 먼저 선택해 주세요.'
     return
   }
 
@@ -117,7 +117,7 @@ async function movePhoto(photoId: string, direction: -1 | 1) {
         </div>
         <h1 class="section-title" style="margin-top: 16px;">{{ travel.title }}</h1>
         <p class="muted">
-          {{ travel.description || '이 프로젝트에 사진과 메모를 쌓아 포토북으로 만듭니다.' }}
+          {{ travel.description || '이 프로젝트의 사진과 메모를 모아 한 권의 포토북으로 정리합니다.' }}
         </p>
         <div class="chip-row" style="margin-top: 18px;">
           <span class="chip">Mood: {{ travel.mood || 'Open' }}</span>
@@ -150,7 +150,7 @@ async function movePhoto(photoId: string, direction: -1 | 1) {
             </div>
             <div class="field">
               <label for="photo-comment">메모</label>
-              <textarea id="photo-comment" v-model="uploadForm.comment" placeholder="이 장면에 대한 짧은 기록을 남겨보세요." />
+              <textarea id="photo-comment" v-model="uploadForm.comment" placeholder="이 장면에서 기억하고 싶은 내용을 남겨 보세요." />
             </div>
             <div class="field">
               <label for="photo-location">장소</label>
@@ -211,8 +211,8 @@ async function movePhoto(photoId: string, direction: -1 | 1) {
 
         <EmptyState
           v-else
-          title="아직 업로드된 사진이 없습니다"
-          description="상단 업로드 패널에서 첫 장면을 추가해 보세요."
+          title="아직 업로드한 사진이 없습니다"
+          description="상단 업로드 영역에서 첫 장면을 추가해 보세요."
         />
       </section>
     </div>
@@ -223,7 +223,7 @@ async function movePhoto(photoId: string, direction: -1 | 1) {
         <div class="stat-grid">
           <div class="stat">
             <strong>{{ photos?.length || 0 }}</strong>
-            <span class="muted">큐레이션된 장면</span>
+            <span class="muted">컬렉션 사진</span>
           </div>
           <div class="stat">
             <strong>{{ travel.bookUid ? 'Yes' : 'No' }}</strong>

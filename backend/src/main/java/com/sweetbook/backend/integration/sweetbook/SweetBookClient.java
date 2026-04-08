@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sweetbook.backend.common.exception.ExternalApiException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ContentDisposition;
@@ -14,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -33,29 +33,45 @@ public class SweetBookClient {
     }
 
     public JsonNode getBookSpecs() {
-        return get("/book-specs");
+        return get("/book-specs", "SweetBook book spec lookup failed.");
     }
 
     public JsonNode getTemplates(String bookSpecUid) {
         try {
-            return restClient.get()
+            String response = restClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/templates")
-                            .queryParamIfPresent("bookSpecUid", java.util.Optional.ofNullable(bookSpecUid))
+                            .queryParamIfPresent("bookSpecUid", Optional.ofNullable(bookSpecUid))
                             .build())
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
-                    .body(JsonNode.class);
+                    .body(String.class);
+            return parseJson(response, "SweetBook template lookup failed.");
         } catch (RestClientException exception) {
-            throw new ExternalApiException("SweetBook 템플릿 조회에 실패했습니다.", exception);
+            throw new ExternalApiException("SweetBook template lookup failed.", exception);
         }
     }
 
     public JsonNode getTemplateDetail(String templateUid) {
-        return get("/templates/" + templateUid);
+        return get("/templates/" + templateUid, "SweetBook template detail lookup failed.");
+    }
+
+    public JsonNode getBook(String bookUid) {
+        try {
+            String response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/books")
+                            .queryParam("bookUid", bookUid)
+                            .build())
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(String.class);
+            return parseJson(response, "SweetBook book lookup failed.");
+        } catch (RestClientException exception) {
+            throw new ExternalApiException("SweetBook book lookup failed.", exception);
+        }
     }
 
     public JsonNode createBook(Map<String, Object> payload) {
-        return post("/books", payload, "SweetBook 책 생성에 실패했습니다.");
+        return postJson("/books", payload, "SweetBook book creation failed.");
     }
 
     public JsonNode uploadPhoto(String bookUid, String filename, String contentType, byte[] bytes) {
@@ -72,19 +88,26 @@ public class SweetBookClient {
 
             body.add("file", new HttpEntity<>(new NamedByteArrayResource(bytes, filename), headers));
 
-            return restClient.post()
+            String response = restClient.post()
                     .uri("/books/" + bookUid + "/photos")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(body)
                     .retrieve()
-                    .body(JsonNode.class);
+                    .body(String.class);
+            return parseJson(response, "SweetBook photo upload failed.");
         } catch (RestClientException exception) {
-            throw new ExternalApiException("SweetBook 사진 업로드에 실패했습니다.", exception);
+            throw new ExternalApiException("SweetBook photo upload failed.", exception);
         }
     }
 
     public JsonNode createCover(String bookUid, String templateUid, Map<String, Object> parameters) {
-        return postMultipart("/books/" + bookUid + "/cover", templateUid, parameters, null, "SweetBook 표지 생성에 실패했습니다.");
+        return postMultipart(
+                "/books/" + bookUid + "/cover",
+                templateUid,
+                parameters,
+                null,
+                "SweetBook cover creation failed."
+        );
     }
 
     public JsonNode addContents(String bookUid, String templateUid, Map<String, Object> parameters, String breakBefore) {
@@ -92,49 +115,68 @@ public class SweetBookClient {
         if (breakBefore != null && !breakBefore.isBlank()) {
             query.put("breakBefore", breakBefore);
         }
-        return postMultipart("/books/" + bookUid + "/contents", templateUid, parameters, query, "SweetBook 내지 생성에 실패했습니다.");
+
+        return postMultipart(
+                "/books/" + bookUid + "/contents",
+                templateUid,
+                parameters,
+                query,
+                "SweetBook content insertion failed."
+        );
     }
 
     public JsonNode finalizeBook(String bookUid) {
-        return post("/books/" + bookUid + "/finalization", Map.of(), "SweetBook 최종화에 실패했습니다.");
+        return postJson("/books/" + bookUid + "/finalization", Map.of(), "SweetBook finalization failed.");
     }
 
     public JsonNode estimateOrder(Map<String, Object> payload) {
-        return post("/orders/estimate", payload, "SweetBook 주문 견적 조회에 실패했습니다.");
+        return postJson("/orders/estimate", payload, "SweetBook order estimate failed.");
     }
 
     public JsonNode createOrder(Map<String, Object> payload) {
-        return post("/orders", payload, "SweetBook 주문 생성에 실패했습니다.");
+        return postJson("/orders", payload, "SweetBook order creation failed.");
     }
 
     public JsonNode getOrder(String orderUid) {
-        return get("/orders/" + orderUid);
+        return get("/orders/" + orderUid, "SweetBook order lookup failed.");
     }
 
     public JsonNode cancelOrder(String orderUid) {
-        return post("/orders/" + orderUid + "/cancel", Map.of(), "SweetBook 주문 취소에 실패했습니다.");
-    }
-
-    private JsonNode get(String path) {
         try {
-            return restClient.get()
-                    .uri(path)
-                    .accept(MediaType.APPLICATION_JSON)
+            restClient.post()
+                    .uri("/orders/" + orderUid + "/cancel")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{}")
                     .retrieve()
-                    .body(JsonNode.class);
+                    .toBodilessEntity();
+            return objectMapper.createObjectNode();
         } catch (RestClientException exception) {
-            throw new ExternalApiException("SweetBook API 호출에 실패했습니다.", exception);
+            throw new ExternalApiException("SweetBook order cancellation failed.", exception);
         }
     }
 
-    private JsonNode post(String path, Map<String, Object> payload, String message) {
+    private JsonNode get(String path, String message) {
         try {
-            return restClient.post()
+            String response = restClient.get()
+                    .uri(path)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(String.class);
+            return parseJson(response, message);
+        } catch (RestClientException exception) {
+            throw new ExternalApiException(message, exception);
+        }
+    }
+
+    private JsonNode postJson(String path, Map<String, Object> payload, String message) {
+        try {
+            String response = restClient.post()
                     .uri(path)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(payload)
                     .retrieve()
-                    .body(JsonNode.class);
+                    .body(String.class);
+            return parseJson(response, message);
         } catch (RestClientException exception) {
             throw new ExternalApiException(message, exception);
         }
@@ -152,7 +194,7 @@ public class SweetBookClient {
             body.add("templateUid", templateUid);
             body.add("parameters", objectMapper.writeValueAsString(parameters));
 
-            return restClient.post()
+            String response = restClient.post()
                     .uri(uriBuilder -> {
                         var builder = uriBuilder.path(path);
                         if (query != null) {
@@ -163,7 +205,18 @@ public class SweetBookClient {
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(body)
                     .retrieve()
-                    .body(JsonNode.class);
+                    .body(String.class);
+            return parseJson(response, message);
+        } catch (ExternalApiException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new ExternalApiException(message, exception);
+        }
+    }
+
+    private JsonNode parseJson(String response, String message) {
+        try {
+            return objectMapper.readTree(response);
         } catch (Exception exception) {
             throw new ExternalApiException(message, exception);
         }

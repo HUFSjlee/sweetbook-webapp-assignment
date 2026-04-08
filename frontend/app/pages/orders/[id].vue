@@ -10,6 +10,12 @@ const { data, refresh } = await useAsyncData(
 
 const canceling = ref(false)
 const errorMessage = ref('')
+const cancelNotice = 'SweetBook sandbox orders are currently treated as non-cancelable in this app.'
+
+async function reloadOrder() {
+  errorMessage.value = ''
+  await refresh()
+}
 
 async function cancelOrder() {
   if (!data.value?.order) {
@@ -18,10 +24,11 @@ async function cancelOrder() {
 
   try {
     canceling.value = true
+    errorMessage.value = ''
     await api.cancelOrder(data.value.order.id)
     await refresh()
   } catch (error) {
-    errorMessage.value = '주문 취소에 실패했습니다.'
+    errorMessage.value = 'Sandbox environment does not allow this order to be canceled.'
     console.error(error)
   } finally {
     canceling.value = false
@@ -35,33 +42,40 @@ async function cancelOrder() {
       <span class="eyebrow">Order Detail</span>
       <h1 class="section-title">{{ data.order.orderUid }}</h1>
       <p class="muted">
-        주문 상태와 SweetBook 응답 원문 일부를 함께 확인할 수 있습니다.
+        Saved order data and the latest SweetBook payload are shown together.
       </p>
 
       <div class="stat-grid">
         <div class="stat">
           <strong>{{ data.order.status }}</strong>
-          <span class="muted">현재 상태</span>
+          <span class="muted">Current status</span>
         </div>
         <div class="stat">
           <strong>{{ data.order.estimatedPrice.toLocaleString() }} KRW</strong>
-          <span class="muted">주문 금액</span>
+          <span class="muted">Estimated total</span>
         </div>
       </div>
 
       <div class="timeline" style="margin-top: 24px;">
         <div class="timeline__item">
-          <strong>수령인</strong>
+          <strong>Recipient</strong>
           <span class="muted">{{ data.order.recipientName }}</span>
         </div>
         <div class="timeline__item">
-          <strong>배송지</strong>
+          <strong>Address</strong>
           <span class="muted">{{ data.order.address }}</span>
         </div>
         <div class="timeline__item">
-          <strong>연락처</strong>
+          <strong>Phone</strong>
           <span class="muted">{{ data.order.phone }}</span>
         </div>
+      </div>
+
+      <div class="panel" style="margin-top: 20px; padding: 18px;">
+        <strong style="display: block; margin-bottom: 8px;">Cancellation</strong>
+        <p class="muted">
+          {{ cancelNotice }}
+        </p>
       </div>
 
       <div v-if="errorMessage" class="error-box" style="margin-top: 18px;">
@@ -69,10 +83,13 @@ async function cancelOrder() {
       </div>
 
       <div class="actions">
-        <button class="danger-button" :disabled="canceling" @click="cancelOrder">
-          {{ canceling ? 'Canceling...' : '주문 취소' }}
+        <button class="ghost-button" :disabled="canceling" @click="reloadOrder">
+          Refresh detail
         </button>
-        <NuxtLink class="ghost-button" to="/orders">목록으로</NuxtLink>
+        <button class="danger-button" :disabled="true" @click="cancelOrder">
+          Cancel unavailable
+        </button>
+        <NuxtLink class="ghost-button" to="/orders">Back to orders</NuxtLink>
       </div>
     </section>
 

@@ -15,8 +15,9 @@ function groupTemplates(items: TemplateListItem[]) {
   const groups = new Map<string, TemplateBundle>()
 
   for (const item of items) {
-    const current = groups.get(item.theme) ?? {
-      theme: item.theme,
+    const theme = item.theme?.trim() || 'Default'
+    const current = groups.get(theme) ?? {
+      theme,
       cover: undefined,
       content: undefined,
       blank: undefined,
@@ -29,18 +30,11 @@ function groupTemplates(items: TemplateListItem[]) {
       current.cover = item
     }
 
-    if (item.templateKind === 'content') {
-      const isBlank = item.templateName.includes('빈내지')
-      if (isBlank && !current.blank) {
-        current.blank = item
-      }
-
-      if (!isBlank && !current.content) {
-        current.content = item
-      }
+    if (item.templateKind === 'content' && !current.content) {
+      current.content = item
     }
 
-    groups.set(item.theme, current)
+    groups.set(theme, current)
   }
 
   return [...groups.values()].filter((bundle) => bundle.cover && bundle.content)

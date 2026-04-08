@@ -5,48 +5,27 @@ const route = useRoute()
 const api = useApi()
 const travelId = computed(() => route.params.id as string)
 
-const { data: travel } = await useAsyncData(
-  () => `preview-travel-${travelId.value}`,
-  () => api.getTravel(travelId.value)
+const travel = await api.getTravel(travelId.value)
+const photos = await api.getPhotos(travelId.value)
+const allBookSpecs = await api.getBookSpecs()
+
+const availableBookSpecs = allBookSpecs.filter((spec) => spec.pageDefault > 0 && Boolean(spec.name?.trim()))
+const selectedBookSpecUid = ref(availableBookSpecs[0]?.bookSpecUid || '')
+const templateBundles = ref<TemplateBundle[]>(
+  selectedBookSpecUid.value ? await api.getTemplateBundles(selectedBookSpecUid.value) : []
 )
-
-const { data: photos } = await useAsyncData(
-  () => `preview-photos-${travelId.value}`,
-  () => api.getPhotos(travelId.value)
-)
-
-const { data: bookSpecs } = await useAsyncData('book-specs', () => api.getBookSpecs())
-
-const selectedBookSpecUid = ref('')
-const templateBundles = ref<TemplateBundle[]>([])
-const selectedTheme = ref('')
+const selectedTheme = ref(templateBundles.value[0]?.theme || '')
 const buildResultMessage = ref('')
 const buildError = ref('')
 const building = ref(false)
 
-watch(
-  bookSpecs,
-  (value) => {
-    if (value?.length && !selectedBookSpecUid.value) {
-      selectedBookSpecUid.value = value[0].bookSpecUid
-    }
-  },
-  { immediate: true }
-)
-
-watch(
-  selectedBookSpecUid,
-  async (value) => {
-    if (!value) {
-      return
-    }
-    templateBundles.value = await api.getTemplateBundles(value)
-    selectedTheme.value = templateBundles.value[0]?.theme || ''
-  },
-  { immediate: true }
-)
-
 const selectedBundle = computed(() => templateBundles.value.find((bundle) => bundle.theme === selectedTheme.value))
+
+async function selectBookSpec(bookSpecUid: string) {
+  selectedBookSpecUid.value = bookSpecUid
+  templateBundles.value = await api.getTemplateBundles(bookSpecUid)
+  selectedTheme.value = templateBundles.value[0]?.theme || ''
+}
 
 async function buildBook() {
   if (!selectedBundle.value || !selectedBundle.value.cover || !selectedBundle.value.content) {
@@ -63,12 +42,12 @@ async function buildBook() {
       coverTemplateUid: selectedBundle.value.cover.templateUid,
       contentTemplateUid: selectedBundle.value.content.templateUid,
       blankTemplateUid: selectedBundle.value.blank?.templateUid,
-      coverTitle: travel.value?.title
+      coverTitle: travel.title
     })
 
     buildResultMessage.value = `Book ${result.bookUid} generated with ${result.pageCount} pages.`
   } catch (error) {
-    buildError.value = '포토북 생성에 실패했습니다. 사진 수와 템플릿 구성을 다시 확인해 주세요.'
+    buildError.value = 'Failed to build the SweetBook output. Check templates and page data.'
     console.error(error)
   } finally {
     building.value = false
@@ -77,14 +56,14 @@ async function buildBook() {
 </script>
 
 <template>
-  <div v-if="travel" class="detail-grid">
+  <div class="detail-grid">
     <div style="display: grid; gap: 24px;">
       <section class="glass-panel">
         <span class="eyebrow">Build Preview</span>
         <h1 class="section-title">{{ travel.title }}</h1>
         <p class="muted">
-          판형과 테마를 고른 뒤 SweetBook 출력용 책을 실제로 생성합니다.
-          현재 선택된 사진 수는 {{ photos?.length || 0 }}장입니다.
+          Choose a book spec and theme bundle, then generate the printable SweetBook output.
+          Current photo count: {{ photos.length }}.
         </p>
 
         <div v-if="buildResultMessage" class="success-box" style="margin-top: 18px;">
@@ -100,35 +79,41 @@ async function buildBook() {
         <div class="split-header">
           <div>
             <span class="eyebrow">Book Spec</span>
-            <h2 class="section-title">판형 선택</h2>
+            <h2 class="section-title">Choose Format</h2>
           </div>
         </div>
 
-        <div class="template-grid">
+        <div v-if="availableBookSpecs.length" class="template-grid">
           <button
-            v-for="spec in bookSpecs"
+            v-for="spec in availableBookSpecs"
             :key="spec.bookSpecUid"
             class="card"
             :class="{ 'is-active': selectedBookSpecUid === spec.bookSpecUid }"
             style="text-align: left; min-width: 220px;"
-            @click="selectedBookSpecUid = spec.bookSpecUid"
+            @click="selectBookSpec(spec.bookSpecUid)"
           >
             <div class="meta-row">
               <span class="chip">{{ spec.bookSpecUid }}</span>
             </div>
             <h3 style="margin: 12px 0 8px;">{{ spec.name }}</h3>
             <p class="muted">
-              기본 {{ spec.pageDefault }}p · 최소 {{ spec.pageMin }}p · 증분 {{ spec.pageIncrement }}p
+              Default {{ spec.pageDefault }}p, min {{ spec.pageMin }}p, increment {{ spec.pageIncrement }}p
             </p>
           </button>
         </div>
+
+        <EmptyState
+          v-else
+          title="No formats available"
+          description="SweetBook did not return a usable product spec."
+        />
       </section>
 
       <section class="panel">
         <div class="split-header">
           <div>
             <span class="eyebrow">Theme Bundle</span>
-            <h2 class="section-title">출력 테마 선택</h2>
+            <h2 class="section-title">Choose Theme</h2>
           </div>
         </div>
 
@@ -145,8 +130,8 @@ async function buildBook() {
 
         <EmptyState
           v-else
-          title="사용 가능한 테마가 없습니다"
-          description="선택한 판형에 대한 템플릿을 불러오지 못했습니다."
+          title="No themes available"
+          description="The selected format did not produce a usable cover/content bundle."
         />
       </section>
     </div>
@@ -160,11 +145,11 @@ async function buildBook() {
               <span class="chip">{{ selectedBundle?.theme || 'No theme selected' }}</span>
               <strong>{{ travel.title }}</strong>
               <p class="muted">
-                {{ travel.description || '감정과 장면을 인쇄용 스토리북으로 정리합니다.' }}
+                {{ travel.description || 'Your travel story will be shaped into a printable photo book.' }}
               </p>
             </div>
             <img
-              :src="photos?.[0]?.imageUrl || selectedBundle?.cover?.thumbnails?.layout"
+              :src="photos[0]?.imageUrl || selectedBundle?.cover?.thumbnails?.layout"
               alt="Selected preview"
             >
           </div>
@@ -174,17 +159,17 @@ async function buildBook() {
       <section class="panel">
         <span class="eyebrow">Build Action</span>
         <p class="muted" style="margin-top: 12px;">
-          현재 선택:
+          Current selection:
           {{ selectedBundle?.cover?.templateName || 'cover n/a' }}
           /
           {{ selectedBundle?.content?.templateName || 'content n/a' }}
         </p>
         <div class="actions">
-          <button class="button" :disabled="building || !selectedBundle || !(photos?.length)" @click="buildBook">
-            {{ building ? 'Building...' : 'SweetBook 포토북 생성' }}
+          <button class="button" :disabled="building || !selectedBundle || !photos.length" @click="buildBook">
+            {{ building ? 'Building...' : 'Generate SweetBook Output' }}
           </button>
           <NuxtLink class="ghost-button" :to="`/travels/${travel.id}/order`">
-            주문 화면으로
+            Go To Order
           </NuxtLink>
         </div>
       </section>
